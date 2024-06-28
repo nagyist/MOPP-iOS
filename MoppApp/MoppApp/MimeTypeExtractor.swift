@@ -51,6 +51,14 @@ class MimeTypeExtractor {
         return false
     }
     
+    public static func isXadesContainer(filePath: URL) -> Bool {
+        if isZipFile(filePath: filePath) {
+            return containerHasSignatureXmlFiles(filePath: filePath)
+        }
+        
+        return false
+    }
+    
     public static func getMimeTypeFromContainer(filePath: URL) -> String {
         
         var mimetype: String = ""
@@ -147,6 +155,24 @@ class MimeTypeExtractor {
         return false
     }
     
+    private static func containerHasSignatureXmlFiles(filePath: URL) -> Bool {
+        do {
+            let archive = try Archive(url: filePath, accessMode: .read)
+            
+            for entry in archive {
+                let entryUrl = URL(fileURLWithPath: entry.path)
+                if entryUrl.lastPathComponent.contains("signatures.xml") {
+                    return true
+                }
+            }
+        } catch (let archiveError) {
+            printLog("Unable to open archive: \(archiveError.localizedDescription)")
+            return false
+        }
+        
+        return false
+    }
+    
     private static func unZipFile(filePath: URL, fileName: String) -> URL? {
         let outputPath =  MoppFileManager.shared.tempCacheDirectoryPath().appendingPathComponent(filePath.lastPathComponent).deletingPathExtension()
 
@@ -185,12 +211,12 @@ class MimeTypeExtractor {
     }
     
     private static func removeUnzippedFolder(folderPath: URL) -> Void {
-        MoppFileManager().removeFile(withPath: folderPath.path)
+        MoppFileManager().removeFile(withPath: FileUtil.getValidPath(url: folderPath)?.path ?? "")
     }
     
     private static func isDdoc(url: URL) -> Bool {
         do {
-            let fileData = try Data(contentsOf: url)
+            let fileData = try Data(contentsOf: FileUtil.getValidPath(url: url)!)
             guard !fileData.isEmpty else {
                 return false
             }
@@ -214,7 +240,7 @@ class MimeTypeExtractor {
     
     private static func isCdoc(url: URL) -> Bool {
         do {
-            let fileData = try Data(contentsOf: url)
+            let fileData = try Data(contentsOf: FileUtil.getValidPath(url: url)!)
             guard !fileData.isEmpty else {
                 return false
             }
